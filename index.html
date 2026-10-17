@@ -230,6 +230,11 @@
   .lb-row.r3 .lb-fill{background:linear-gradient(90deg,#F0B27A,#CD7F32);}
   .lb-pts{font-family:'Baloo 2'; font-weight:800; font-size:16px; color:var(--grape); flex-shrink:0; min-width:44px; text-align:right;}
   .lb-gap{text-align:center; color:var(--ink-soft); font-weight:800; letter-spacing:4px; margin:2px 0;}
+  .lb-sub{font-size:11px; font-weight:700; color:var(--ink-soft); margin-top:3px;}
+  .save-status{min-height:20px; margin-top:10px; font-size:13px; font-weight:800; color:var(--ink-soft);}
+  .save-status.ok{color:#2C8F4F;}
+  .save-status.fail{color:#C94747;}
+  .btn:disabled{opacity:.6; cursor:default;}
   .lb-empty{text-align:center; color:var(--ink-soft); font-weight:700; padding:20px 8px;}
 
   footer.note{text-align:center; color:var(--ink-soft); font-size:12px; font-weight:700; margin-top:26px;}
@@ -271,7 +276,7 @@
       <input class="name-input" id="usernameInput" type="text" maxlength="15" autocomplete="off"
              placeholder="Contoh: Budi" onkeydown="if(event.key==='Enter') doLogin()">
       <div class="login-error" id="loginError" role="alert"></div>
-      <button class="btn btn-primary btn-block" style="margin-top:6px;" onclick="doLogin()">Masuk 🚀</button>
+      <button class="btn btn-primary btn-block" id="loginBtn" style="margin-top:6px;" onclick="doLogin()">Masuk 🚀</button>
       <div id="knownWrap" style="display:none;">
         <div class="known-title">Sudah pernah main? Ketuk namamu:</div>
         <div class="known-list" id="knownList"></div>
@@ -331,6 +336,7 @@
       <div class="result-stars" id="resultStars"></div>
       <div class="result-score" id="resultScoreText"></div>
       <div class="result-sub" id="resultMessage"></div>
+      <div class="save-status" id="saveStatus"></div>
       <div class="btn-row">
         <button class="btn btn-yellow" onclick="retryLevel()">Ulangi</button>
         <button class="btn btn-secondary" onclick="goToLevels()">Semua Level</button>
@@ -355,7 +361,7 @@
     </div>
   </section>
 
-  <footer class="note">Dibuat untuk latihan membaca anak SD &middot; skor tersimpan di perangkat ini</footer>
+  <footer class="note">Dibuat untuk latihan membaca anak SD &middot; skor tersimpan online di peringkat</footer>
 </div>
 
 <script>
@@ -465,88 +471,135 @@ state.levelProgress[0].unlocked = true;
 
 let current = { levelIndex:0, qIndex:0, score:0, correctCount:0, sylPicked:[] };
 
-/* ===================== PLAYERS, LOGIN & LEADERBOARD ===================== */
-const STORE_KEY = 'kiki_players_v1';
+/* ===================== SUPABASE ===================== */
+const SUPABASE_URL = 'https://cyozjzsuzomvupvrokjh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Jtkj9zJsRqJhr-CYmdEn5g_N0q5cHYF';
+const TABLE_URL = SUPABASE_URL + '/rest/v1/ranking';
+const LEVEL_COLS = ['level_1','level_2','level_3','level_4','level_5'];
 const MAX_POINTS = LEVELS.reduce((n,l)=>n + l.questions.length*20, 0);
-let memStore = {};          // cadangan bila penyimpanan browser tidak tersedia
-let playerKey = null;
+const LB_FIELDS = 'id,username,level_1,level_2,level_3,level_4,level_5,total_score,created_at';
+
+async function sb(query, opts){
+  opts = opts || {};
+  const res = await fetch(TABLE_URL + query, {
+    method: opts.method || 'GET',
+    body: opts.body,
+    headers: Object.assign({ apikey: SUPABASE_KEY, 'Content-Type':'application/json' }, opts.headers || {})
+  });
+  if(!res.ok){
+    const err = new Error('Supabase HTTP ' + res.status);
+    err.status = res.status;
+    try{ err.detail = await res.text(); }catch(e){}
+    throw err;
+  }
+  return res;
+}
+async function findPlayer(name){
+  const res = await sb('?select=*&limit=1&username=ilike.' + encodeURIComponent(name));
+  const rows = await res.json();
+  return rows[0] || null;
+}
+async function createPlayer(name){
+  try{
+    const res = await sb('', { method:'POST', body:JSON.stringify({username:name}), headers:{Prefer:'return=representation'} });
+    return (await res.json())[0];
+  }catch(e){
+    if(e.status === 409){ const row = await findPlayer(name); if(row) return row; }   // nama sudah dibuat bersamaan
+    throw e;
+  }
+}
+
+/* ===================== PLAYERS, LOGIN & LEADERBOARD ===================== */
+let player = null;                 // {id, name}
+let serverBest = [0,0,0,0,0];      // nilai tertinggi per level yang sudah ada di server
+let loggingIn = false;
 let lbPrev = 'screen-home';
+let lbToken = 0;
 
 function freshProgress(){
   const lp = LEVELS.map(()=>({unlocked:false, stars:0, bestScore:0}));
   lp[0].unlocked = true;
   return lp;
 }
-function loadPlayers(){
-  try{ const raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : memStore; }
-  catch(e){ return memStore; }
+function starsFor(score, lvl){
+  const pct = score / (lvl.questions.length*20);
+  return pct >= 0.99 ? 3 : pct >= 0.6 ? 2 : pct > 0 ? 1 : 0;
 }
-function savePlayers(p){
-  memStore = p;
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(p)); }catch(e){}
-}
-function persistPlayer(){
-  if(!playerKey) return;
-  const p = loadPlayers();
-  const rec = p[playerKey];
-  if(!rec) return;
-  rec.levelProgress = state.levelProgress;
-  rec.totalScore = state.totalScore;
-  if(state.totalScore > (rec.highScore||0)){
-    rec.highScore = state.totalScore;
-    rec.reachedAt = Date.now();
-  }
-  savePlayers(p);
+function progressFromScores(scores){
+  const lp = freshProgress();
+  scores.forEach((sc,i)=>{
+    lp[i].bestScore = sc;
+    lp[i].stars = starsFor(sc, LEVELS[i]);
+    if(lp[i].stars > 0 && lp[i+1]) lp[i+1].unlocked = true;
+  });
+  return lp;
 }
 
+/* nama yang pernah dipakai di perangkat ini (hanya untuk tombol pintas) */
+function getKnownNames(){
+  try{ return JSON.parse(localStorage.getItem('kiki_known_names') || '[]'); }catch(e){ return []; }
+}
+function rememberName(name){
+  try{
+    const list = getKnownNames().filter(n=>n.toLowerCase() !== name.toLowerCase());
+    list.unshift(name);
+    localStorage.setItem('kiki_known_names', JSON.stringify(list.slice(0,8)));
+  }catch(e){}
+}
 function renderKnownPlayers(){
-  const players = Object.values(loadPlayers());
+  const names = getKnownNames();
   const wrap = document.getElementById('knownWrap');
   const list = document.getElementById('knownList');
   list.innerHTML = '';
-  wrap.style.display = players.length ? 'block' : 'none';
-  players.sort((a,b)=>a.name.localeCompare(b.name)).forEach(pl=>{
+  wrap.style.display = names.length ? 'block' : 'none';
+  names.forEach(n=>{
     const b = document.createElement('button');
     b.className = 'chip-player';
-    b.textContent = pl.name;
-    b.onclick = ()=>doLogin(pl.name);
+    b.textContent = n;
+    b.onclick = ()=>doLogin(n);
     list.appendChild(b);
   });
 }
 
-function doLogin(forcedName){
+async function doLogin(forcedName){
+  if(loggingIn) return;
   const input = document.getElementById('usernameInput');
   const err = document.getElementById('loginError');
-  const name = (forcedName || input.value).trim().replace(/\s+/g,' ');
+  const btn = document.getElementById('loginBtn');
+  const name = (forcedName || input.value)
+    .replace(/[^\p{L}\p{N} .\-]/gu, '')     // hanya huruf, angka, spasi, titik, strip
+    .replace(/\s+/g, ' ').trim().slice(0,15).trim();
   if(name.length < 2){
     err.textContent = 'Tulis namamu dulu, minimal 2 huruf ya.';
     input.focus();
     return;
   }
   err.textContent = '';
-  const key = name.toLowerCase();
-  const players = loadPlayers();
-  if(!players[key]){
-    players[key] = {name, levelProgress:freshProgress(), totalScore:0, highScore:0, reachedAt:Date.now()};
-    savePlayers(players);
+  loggingIn = true; btn.disabled = true; btn.textContent = 'Memuat…';
+  try{
+    let row = await findPlayer(name);
+    if(!row) row = await createPlayer(name);
+    player = { id: row.id, name: row.username };
+    serverBest = LEVEL_COLS.map(c=>row[c] || 0);
+    state = { levelProgress: progressFromScores(serverBest), totalScore: serverBest.reduce((a,b)=>a+b,0) };
+    updateTotalScoreLabel();
+    rememberName(player.name);
+    document.getElementById('playerNameLabel').textContent = player.name;
+    document.getElementById('playerBar').classList.add('show');
+    document.getElementById('homeSpeech').textContent = `Halo, ${player.name}! Yuk main sambil belajar membaca!`;
+    input.value = '';
+    showScreen('screen-home');
+  }catch(e){
+    console.error(e);
+    err.textContent = 'Belum bisa terhubung ke server. Cek internet lalu coba lagi.';
+  }finally{
+    loggingIn = false; btn.disabled = false; btn.textContent = 'Masuk 🚀';
   }
-  const rec = players[key];
-  playerKey = key;
-  const lp = freshProgress();
-  (rec.levelProgress||[]).forEach((x,i)=>{ if(lp[i]) lp[i] = Object.assign(lp[i], x); });
-  state = { levelProgress: lp, totalScore: rec.totalScore||0 };
-  updateTotalScoreLabel();
-
-  document.getElementById('playerNameLabel').textContent = rec.name;
-  document.getElementById('playerBar').classList.add('show');
-  document.getElementById('homeSpeech').textContent = `Halo, ${rec.name}! Yuk main sambil belajar membaca!`;
-  input.value = '';
-  showScreen('screen-home');
 }
 
 function logout(){
-  persistPlayer();
-  playerKey = null;
+  player = null;
+  serverBest = [0,0,0,0,0];
   state = { levelProgress: freshProgress(), totalScore:0 };
   updateTotalScoreLabel();
   document.getElementById('playerBar').classList.remove('show');
@@ -554,51 +607,100 @@ function logout(){
   showScreen('screen-login');
 }
 
+/* simpan nilai per level ke Supabase (nilai tertinggi tidak pernah turun) */
+function setSaveStatus(kind){
+  const el = document.getElementById('saveStatus');
+  if(!el) return;
+  el.className = 'save-status ' + kind;
+  el.textContent = kind==='ok' ? '☁️ Skor tersimpan di peringkat' :
+                   kind==='saving' ? 'Menyimpan skor…' :
+                   '⚠️ Skor belum tersimpan. Cek internet lalu mainkan level ini lagi.';
+}
+async function persistPlayer(){
+  if(!player) return;
+  setSaveStatus('saving');
+  const scores = LEVEL_COLS.map((_,i)=>Math.max(serverBest[i], state.levelProgress[i].bestScore));
+  const body = {};
+  LEVEL_COLS.forEach((c,i)=>{ body[c] = scores[i]; });
+  try{
+    await sb('?id=eq.' + encodeURIComponent(player.id), { method:'PATCH', body:JSON.stringify(body) });
+    serverBest = scores;
+    setSaveStatus('ok');
+  }catch(e){
+    console.error(e);
+    setSaveStatus('fail');
+  }
+}
+
 function showLeaderboard(){
   const active = document.querySelector('.screen.active');
   if(active && active.id !== 'screen-leaderboard') lbPrev = active.id;
-  persistPlayer();
-  renderLeaderboard();
   showScreen('screen-leaderboard');
+  renderLeaderboard();
 }
 function closeLeaderboard(){ showScreen(lbPrev); }
 
 function lbRow(rank, rec, isMe){
   const medal = rank===1 ? '🥇' : rank===2 ? '🥈' : rank===3 ? '🥉' : rank;
+  const total = rec.total_score || 0;
   const row = document.createElement('div');
   row.className = 'lb-row' + (isMe ? ' me' : '') + (rank<=3 ? ' r'+rank : '');
-  const pct = Math.min(100, Math.round((rec.highScore||0) / MAX_POINTS * 100));
-
   const r = document.createElement('div'); r.className = 'lb-rank'; r.textContent = medal;
   const main = document.createElement('div'); main.className = 'lb-main';
-  const nm = document.createElement('div'); nm.className = 'lb-name'; nm.textContent = rec.name + (isMe ? ' (kamu)' : '');
+  const nm = document.createElement('div'); nm.className = 'lb-name'; nm.textContent = rec.username + (isMe ? ' (kamu)' : '');
   const bar = document.createElement('div'); bar.className = 'lb-bar';
-  const fill = document.createElement('div'); fill.className = 'lb-fill'; fill.style.width = pct + '%';
-  bar.appendChild(fill); main.appendChild(nm); main.appendChild(bar);
-  const pts = document.createElement('div'); pts.className = 'lb-pts'; pts.textContent = rec.highScore||0;
+  const fill = document.createElement('div'); fill.className = 'lb-fill'; fill.style.width = Math.min(100, Math.round(total/MAX_POINTS*100)) + '%';
+  bar.appendChild(fill);
+  const sub = document.createElement('div'); sub.className = 'lb-sub';
+  sub.textContent = LEVEL_COLS.map((c,i)=>'L'+(i+1)+' '+(rec[c]||0)).join(' · ');
+  main.appendChild(nm); main.appendChild(bar); main.appendChild(sub);
+  const pts = document.createElement('div'); pts.className = 'lb-pts'; pts.textContent = total;
   row.appendChild(r); row.appendChild(main); row.appendChild(pts);
   return row;
 }
-
-function renderLeaderboard(){
-  const box = document.getElementById('lbList');
+function lbMessage(box, text, withRetry){
   box.innerHTML = '';
-  const ranked = Object.entries(loadPlayers())
-    .map(([key,rec])=>({key, ...rec}))
-    .sort((a,b)=> (b.highScore||0)-(a.highScore||0) || (a.reachedAt||0)-(b.reachedAt||0));
-  if(!ranked.length){
-    const e = document.createElement('div');
-    e.className = 'lb-empty';
-    e.textContent = 'Belum ada pemain. Jadilah yang pertama!';
-    box.appendChild(e);
-    return;
+  const e = document.createElement('div');
+  e.className = 'lb-empty';
+  e.textContent = text;
+  if(withRetry){
+    const b = document.createElement('button');
+    b.className = 'chip-player'; b.style.marginTop = '10px'; b.textContent = 'Coba lagi';
+    b.onclick = renderLeaderboard;
+    e.appendChild(document.createElement('br')); e.appendChild(b);
   }
-  ranked.slice(0,10).forEach((rec,i)=> box.appendChild(lbRow(i+1, rec, rec.key===playerKey)));
-  const myIdx = ranked.findIndex(r=>r.key===playerKey);
-  if(myIdx >= 10){
-    const gap = document.createElement('div'); gap.className = 'lb-gap'; gap.textContent = '···';
-    box.appendChild(gap);
-    box.appendChild(lbRow(myIdx+1, ranked[myIdx], true));
+  box.appendChild(e);
+}
+
+async function renderLeaderboard(){
+  const box = document.getElementById('lbList');
+  const token = ++lbToken;
+  lbMessage(box, 'Memuat peringkat…');
+  try{
+    const res = await sb('?select=' + LB_FIELDS + '&order=total_score.desc,created_at.asc&limit=10');
+    const top = await res.json();
+    let mine = null, myRank = 0;
+    if(player && !top.some(r=>r.id===player.id)){
+      const mr = await sb('?select=' + LB_FIELDS + '&limit=1&id=eq.' + encodeURIComponent(player.id));
+      mine = (await mr.json())[0] || null;
+      if(mine){
+        const cr = await sb('?select=id&limit=1&total_score=gt.' + mine.total_score, { headers:{Prefer:'count=exact'} });
+        const range = cr.headers.get('Content-Range') || '';
+        myRank = (parseInt(range.split('/')[1], 10) || 0) + 1;
+      }
+    }
+    if(token !== lbToken) return;      // ada permintaan yang lebih baru
+    if(!top.length){ lbMessage(box, 'Belum ada pemain. Jadilah yang pertama!'); return; }
+    box.innerHTML = '';
+    top.forEach((rec,i)=> box.appendChild(lbRow(i+1, rec, !!player && rec.id===player.id)));
+    if(mine){
+      const gap = document.createElement('div'); gap.className = 'lb-gap'; gap.textContent = '···';
+      box.appendChild(gap);
+      box.appendChild(lbRow(myRank, mine, true));
+    }
+  }catch(e){
+    console.error(e);
+    if(token === lbToken) lbMessage(box, 'Peringkat belum bisa dimuat.', true);
   }
 }
 
@@ -796,7 +898,6 @@ function finishLevel(){
   }
   if(stars > prog.stars) prog.stars = stars;
   updateTotalScoreLabel();
-  persistPlayer();
 
   const isLast = current.levelIndex === LEVELS.length - 1;
   if(!isLast && stars > 0){
@@ -839,7 +940,6 @@ function showFinal(){
 
 function resetGame(){
   state = { levelProgress: freshProgress(), totalScore:0 };
-  persistPlayer();   // poin tertinggi di peringkat tetap tersimpan
   updateTotalScoreLabel();
   showScreen('screen-home');
 }
