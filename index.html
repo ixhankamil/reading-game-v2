@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ayo Membaca! - Petualangan Kiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF8EC;
+    --sun:#FFC93C;
+    --sky:#4FC3E8;
+    --coral:#FF6B6B;
+    --grass:#5BC97E;
+    --grape:#8A6FDF;
+    --ink:#3A3358;
+    --ink-soft:#6B6489;
+    --white:#FFFFFF;
+    --card-shadow: 0 8px 0 rgba(58,51,88,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(circle at 15% 10%, #FFFDF6 0%, var(--cream) 45%, #FFF1DA 100%);
+    font-family:'Nunito',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  .app{
+    max-width:720px;
+    margin:0 auto;
+    min-height:100vh;
+    padding:18px 18px 40px;
+    position:relative;
+  }
+  h1,h2,h3{font-family:'Baloo 2',sans-serif; margin:0;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand h1{font-size:22px; color:var(--grape);}
+  .brand .sub{font-size:12px; color:var(--ink-soft); font-weight:700; letter-spacing:.5px;}
+  .score-pill{
+    background:var(--white); border-radius:999px; padding:8px 16px;
+    box-shadow:var(--card-shadow); font-family:'Baloo 2'; font-weight:700;
+    color:var(--ink); display:flex; align-items:center; gap:6px; font-size:15px;
+  }
+  .screen{display:none; animation:fadeIn .35s ease;}
+  .screen.active{display:block;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---- Mascot ---- */
+  .mascot-wrap{display:flex; justify-content:center; margin:6px 0 4px;}
+  .bounce{animation:bounce 2.6s ease-in-out infinite;}
+  @keyframes bounce{0%,100%{transform:translateY(0) rotate(-1deg);} 50%{transform:translateY(-10px) rotate(1deg);}}
+
+  .speech{
+    background:var(--white); border:3px solid var(--ink); border-radius:20px;
+    padding:12px 18px; font-family:'Baloo 2'; font-weight:600; font-size:16px;
+    text-align:center; position:relative; max-width:420px; margin:8px auto 0;
+    box-shadow:var(--card-shadow);
+  }
+  .speech:after{
+    content:""; position:absolute; left:50%; top:-14px; transform:translateX(-50%);
+    border-width:0 10px 14px 10px; border-style:solid;
+    border-color:transparent transparent var(--white) transparent;
+  }
+  .speech:before{
+    content:""; position:absolute; left:50%; top:-18px; transform:translateX(-50%);
+    border-width:0 12px 16px 12px; border-style:solid;
+    border-color:transparent transparent var(--ink) transparent;
+  }
+
+  /* ---- Home ---- */
+  .home-title{text-align:center; margin-top:6px;}
+  .home-title h2{font-size:32px; color:var(--ink); line-height:1.15;}
+  .home-title h2 span{color:var(--coral);}
+  .home-title p{color:var(--ink-soft); font-weight:700; margin-top:8px; font-size:15px;}
+
+  .btn{
+    font-family:'Baloo 2'; font-weight:700; font-size:18px; border:none;
+    border-radius:16px; padding:14px 28px; cursor:pointer;
+    box-shadow:0 6px 0 rgba(0,0,0,0.15); transition:transform .08s ease;
+    color:var(--white);
+  }
+  .btn:active{transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,0.15);}
+  .btn-primary{background:var(--coral);}
+  .btn-primary:hover{background:#ff5a5a;}
+  .btn-secondary{background:var(--sky);}
+  .btn-yellow{background:var(--sun); color:var(--ink);}
+  .btn-block{width:100%; display:block; margin-top:18px;}
+  .center{text-align:center;}
+
+  /* ---- Level select ---- */
+  .level-grid{display:flex; flex-direction:column; gap:12px; margin-top:16px;}
+  .level-card{
+    background:var(--white); border-radius:20px; padding:16px 18px;
+    display:flex; align-items:center; gap:14px; box-shadow:var(--card-shadow);
+    cursor:pointer; border:3px solid transparent; transition:border-color .15s ease;
+  }
+  .level-card.locked{opacity:.55; cursor:not-allowed;}
+  .level-card:not(.locked):hover{border-color:var(--sun);}
+  .level-num{
+    font-family:'Baloo 2'; font-weight:800; font-size:22px; color:var(--white);
+    background:var(--grape); width:48px; height:48px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .level-info{flex:1;}
+  .level-info h3{font-size:17px; color:var(--ink);}
+  .level-info p{margin:2px 0 0; font-size:13px; color:var(--ink-soft); font-weight:700;}
+  .stars{font-size:16px; letter-spacing:2px;}
+
+  /* ---- Game screen ---- */
+  .game-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .back-link{font-family:'Baloo 2'; font-weight:700; color:var(--ink-soft); background:none; border:none; cursor:pointer; font-size:14px;}
+  .progress-track{background:#EFE9FB; border-radius:999px; height:14px; overflow:hidden; margin:10px 0 18px;}
+  .progress-fill{background:linear-gradient(90deg,var(--grass),var(--sky)); height:100%; border-radius:999px; transition:width .3s ease;}
+
+  .question-card{
+    background:var(--white); border-radius:24px; padding:26px 22px; box-shadow:var(--card-shadow);
+    text-align:center;
+  }
+  .q-label{font-size:12px; font-weight:800; color:var(--grape); letter-spacing:1px; text-transform:uppercase; margin-bottom:6px;}
+  .q-emoji{font-size:64px; margin:8px 0;}
+  .q-text{font-family:'Baloo 2'; font-weight:700; font-size:22px; color:var(--ink); margin:6px 0 18px; line-height:1.35;}
+  .q-text .accent{color:var(--coral);}
+
+  .options-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;}
+  .options-grid.single-col{grid-template-columns:1fr;}
+  .opt-btn{
+    font-family:'Baloo 2'; font-weight:700; font-size:19px; background:#F5F2FF;
+    border:3px solid #E4DCFB; border-radius:16px; padding:16px 10px; cursor:pointer;
+    color:var(--ink); transition:.12s ease;
+  }
+  .opt-btn:hover{border-color:var(--grape); background:#EFE7FF;}
+  .opt-btn.correct{background:var(--grass); border-color:var(--grass); color:var(--white);}
+  .opt-btn.wrong{background:var(--coral); border-color:var(--coral); color:var(--white);}
+  .opt-btn:disabled{cursor:default;}
+
+  .syllable-row{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:14px 0 6px; min-height:56px;}
+  .syllable-slot{
+    min-width:70px; height:52px; border:3px dashed #D9CFF7; border-radius:14px;
+    display:flex; align-items:center; justify-content:center; font-family:'Baloo 2';
+    font-weight:700; font-size:20px; color:var(--grape); background:#FBFAFF;
+  }
+  .syllable-bank{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:16px;}
+  .syllable-chip{
+    font-family:'Baloo 2'; font-weight:700; font-size:19px; background:var(--sky);
+    color:var(--white); border:none; border-radius:12px; padding:12px 18px; cursor:pointer;
+    box-shadow:0 4px 0 rgba(0,0,0,0.12);
+  }
+  .syllable-chip:disabled{opacity:.35; cursor:default;}
+  .syllable-chip:active{transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.12);}
+
+  .story-box{
+    background:#FFF6E5; border-radius:18px; padding:18px 20px; text-align:left;
+    font-family:'Nunito'; font-weight:700; font-size:16px; line-height:1.7; color:var(--ink);
+    margin-bottom:16px; border:2px solid #FFE3AC;
+  }
+
+  .feedback-banner{
+    margin-top:16px; font-family:'Baloo 2'; font-weight:700; font-size:16px;
+    border-radius:14px; padding:10px; display:none;
+  }
+  .feedback-banner.show{display:block; animation:fadeIn .25s ease;}
+  .feedback-banner.ok{background:#E3F8E9; color:#2C8F4F;}
+  .feedback-banner.no{background:#FFEAEA; color:#C94747;}
+
+  .next-btn{margin-top:16px;}
+
+  /* ---- Result / final ---- */
+  .result-card{
+    background:var(--white); border-radius:26px; padding:32px 24px; text-align:center;
+    box-shadow:var(--card-shadow); margin-top:10px;
+  }
+  .result-stars{font-size:44px; letter-spacing:6px; margin:10px 0;}
+  .result-score{font-family:'Baloo 2'; font-weight:800; font-size:28px; color:var(--grape); margin:4px 0 2px;}
+  .result-sub{color:var(--ink-soft); font-weight:700; font-size:14px;}
+  .btn-row{display:flex; gap:12px; margin-top:22px; flex-wrap:wrap; justify-content:center;}
+
+  .certificate{
+    background:linear-gradient(160deg,#FFF6E5,#FFFFFF); border:4px solid var(--sun);
+    border-radius:26px; padding:30px 22px; text-align:center; margin-top:12px;
+  }
+  .certificate h2{font-size:24px; color:var(--grape);}
+  .certificate .medal{font-size:70px;}
+  .certificate .total{font-family:'Baloo 2'; font-weight:800; font-size:34px; color:var(--coral); margin:8px 0;}
+
+  /* ---- Login & Leaderboard ---- */
+  .top-actions{display:flex; align-items:center; gap:8px;}
+  .icon-btn{
+    background:var(--white); border:none; border-radius:999px; width:40px; height:40px;
+    box-shadow:var(--card-shadow); font-size:20px; cursor:pointer; line-height:1;
+  }
+  .icon-btn:focus-visible,.btn:focus-visible,.back-link:focus-visible,.chip-player:focus-visible{outline:3px solid var(--grape); outline-offset:2px;}
+  .player-bar{
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--white); border-radius:14px; padding:8px 14px; margin-bottom:10px;
+    font-family:'Baloo 2'; font-weight:700; font-size:14px; box-shadow:var(--card-shadow);
+  }
+  .player-bar.show{display:flex;}
+  .player-bar button{background:none; border:none; color:var(--coral); font-family:'Baloo 2'; font-weight:700; font-size:14px; cursor:pointer;}
+  .login-card{background:var(--white); border-radius:24px; padding:22px 20px; box-shadow:var(--card-shadow); margin-top:16px;}
+  .login-card label{display:block; font-family:'Baloo 2'; font-weight:700; font-size:17px; margin-bottom:8px;}
+  .name-input{
+    width:100%; font-family:'Baloo 2'; font-weight:700; font-size:20px; color:var(--ink);
+    border:3px solid #E4DCFB; border-radius:16px; padding:12px 16px; background:#FBFAFF; outline:none;
+  }
+  .name-input:focus{border-color:var(--grape);}
+  .login-error{min-height:20px; color:#C94747; font-weight:700; font-size:13px; margin-top:6px;}
+  .known-title{font-weight:800; font-size:13px; color:var(--ink-soft); margin:14px 0 8px;}
+  .known-list{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip-player{
+    font-family:'Baloo 2'; font-weight:700; font-size:15px; background:#F5F2FF; color:var(--ink);
+    border:2px solid #E4DCFB; border-radius:999px; padding:6px 14px; cursor:pointer;
+  }
+  .chip-player:hover{border-color:var(--grape);}
+  .lb-card{background:var(--white); border-radius:24px; padding:18px 16px; box-shadow:var(--card-shadow); margin-top:12px;}
+  .lb-row{display:flex; align-items:center; gap:10px; padding:8px 8px; border-radius:14px;}
+  .lb-row.me{background:#FFF6E5; outline:2px solid var(--sun);}
+  .lb-rank{width:34px; text-align:center; font-family:'Baloo 2'; font-weight:800; font-size:20px; flex-shrink:0;}
+  .lb-main{flex:1; min-width:0;}
+  .lb-name{font-family:'Baloo 2'; font-weight:700; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .lb-bar{background:#EFE9FB; border-radius:999px; height:10px; overflow:hidden; margin-top:3px;}
+  .lb-fill{height:100%; border-radius:999px; background:linear-gradient(90deg,var(--sun),var(--coral)); transition:width .5s ease;}
+  .lb-row.r2 .lb-fill{background:linear-gradient(90deg,#C9D1DA,#8E9BAA);}
+  .lb-row.r3 .lb-fill{background:linear-gradient(90deg,#F0B27A,#CD7F32);}
+  .lb-pts{font-family:'Baloo 2'; font-weight:800; font-size:16px; color:var(--grape); flex-shrink:0; min-width:44px; text-align:right;}
+  .lb-gap{text-align:center; color:var(--ink-soft); font-weight:800; letter-spacing:4px; margin:2px 0;}
+  .lb-empty{text-align:center; color:var(--ink-soft); font-weight:700; padding:20px 8px;}
+
+  footer.note{text-align:center; color:var(--ink-soft); font-size:12px; font-weight:700; margin-top:26px;}
+
+  @media (max-width:420px){
+    .options-grid{grid-template-columns:1fr;}
+    .home-title h2{font-size:26px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <span style="font-size:26px;">🐰</span>
+      <div>
+        <h1>Ayo Membaca!</h1>
+        <div class="sub">bareng Kiki si Kelinci Pintar</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" onclick="showLeaderboard()" aria-label="Lihat peringkat" title="Peringkat">🏆</button>
+      <div class="score-pill">⭐ <span id="totalScoreLabel">0</span> poin</div>
+    </div>
+  </div>
+
+  <div class="player-bar" id="playerBar">
+    <span>👤 <span id="playerNameLabel"></span></span>
+    <button onclick="logout()">Ganti pemain</button>
+  </div>
+
+  <!-- LOGIN -->
+  <section id="screen-login" class="screen active">
+    <div class="mascot-wrap"><div class="bounce" id="mascotLogin"></div></div>
+    <div class="speech">Halo! Aku Kiki. Siapa namamu?</div>
+    <div class="login-card">
+      <label for="usernameInput">Tulis namamu</label>
+      <input class="name-input" id="usernameInput" type="text" maxlength="15" autocomplete="off"
+             placeholder="Contoh: Budi" onkeydown="if(event.key==='Enter') doLogin()">
+      <div class="login-error" id="loginError" role="alert"></div>
+      <button class="btn btn-primary btn-block" style="margin-top:6px;" onclick="doLogin()">Masuk 🚀</button>
+      <div id="knownWrap" style="display:none;">
+        <div class="known-title">Sudah pernah main? Ketuk namamu:</div>
+        <div class="known-list" id="knownList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEADERBOARD -->
+  <section id="screen-leaderboard" class="screen">
+    <div class="game-header">
+      <button class="back-link" onclick="closeLeaderboard()">← Kembali</button>
+      <div class="q-label">PERINGKAT</div>
+      <span style="width:60px;"></span>
+    </div>
+    <h2 class="center" style="font-size:24px;">🏆 Peringkat Pemain</h2>
+    <p class="center result-sub" style="margin:4px 0 0;">Diurutkan dari poin tertinggi (maksimal 500)</p>
+    <div class="lb-card" id="lbList"></div>
+  </section>
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen">
+    <div class="mascot-wrap"><div class="bounce" id="mascotHome"></div></div>
+    <div class="speech" id="homeSpeech">Halo! Aku Kiki. Yuk main sambil belajar membaca!</div>
+    <div class="home-title">
+      <h2>Petualangan Membaca <span>5 Level</span></h2>
+      <p>Kenal huruf → suku kata → kata → kalimat → cerita</p>
+    </div>
+    <div class="center">
+      <button class="btn btn-primary btn-block" onclick="goToLevels()">Mulai Bermain 🚀</button>
+      <button class="btn btn-yellow btn-block" onclick="showLeaderboard()">🏆 Lihat Peringkat</button>
+    </div>
+  </section>
+
+  <!-- LEVEL SELECT -->
+  <section id="screen-levels" class="screen">
+    <div class="mascot-wrap"><div class="bounce" id="mascotLevels" style="transform:scale(.8)"></div></div>
+    <h2 class="center" style="font-size:22px;">Pilih Level</h2>
+    <div class="level-grid" id="levelGrid"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="game-header">
+      <button class="back-link" onclick="goToLevels()">← Level</button>
+      <div class="q-label" id="gameLevelLabel"></div>
+      <div class="score-pill" style="padding:6px 12px; font-size:13px;">⭐ <span id="levelScoreLabel">0</span></div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="question-card" id="questionCard"></div>
+  </section>
+
+  <!-- LEVEL RESULT -->
+  <section id="screen-result" class="screen">
+    <div class="mascot-wrap"><div class="bounce" id="mascotResult"></div></div>
+    <div class="result-card">
+      <div class="q-label" id="resultLevelLabel">LEVEL SELESAI</div>
+      <div class="result-stars" id="resultStars"></div>
+      <div class="result-score" id="resultScoreText"></div>
+      <div class="result-sub" id="resultMessage"></div>
+      <div class="btn-row">
+        <button class="btn btn-yellow" onclick="retryLevel()">Ulangi</button>
+        <button class="btn btn-secondary" onclick="goToLevels()">Semua Level</button>
+        <button class="btn btn-primary" id="nextLevelBtn" onclick="goNextLevel()">Level Berikutnya →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section id="screen-final" class="screen">
+    <div class="mascot-wrap"><div class="bounce" id="mascotFinal" style="transform:scale(1.1)"></div></div>
+    <div class="certificate">
+      <div class="medal">🏆</div>
+      <h2>Selamat, Kamu Jagoan Membaca!</h2>
+      <div class="total" id="finalTotal">0 Poin</div>
+      <p class="result-sub">Kamu sudah menyelesaikan semua 5 level bersama Kiki.</p>
+      <div class="btn-row">
+        <button class="btn btn-yellow" onclick="showLeaderboard()">🏆 Peringkat</button>
+        <button class="btn btn-secondary" onclick="goToLevels()">Lihat Level</button>
+        <button class="btn btn-primary" onclick="resetGame()">Main Lagi dari Awal</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">Dibuat untuk latihan membaca anak SD &middot; skor tersimpan di perangkat ini</footer>
+</div>
+
+<script>
+/* ===================== MASCOT (SVG Kiki si Kelinci) ===================== */
+function kikiSVG(mood){
+  // mood: 'happy' | 'excited' | 'thinking' | 'cheer'
+  const mouth = mood==='cheer' ? '<path d="M78 128 Q100 148 122 128" stroke="#3A3358" stroke-width="4" fill="none" stroke-linecap="round"/>' :
+                mood==='thinking' ? '<ellipse cx="100" cy="130" rx="8" ry="5" fill="#3A3358"/>' :
+                '<path d="M82 126 Q100 140 118 126" stroke="#3A3358" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  return `
+  <svg width="150" height="170" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="100" cy="200" rx="55" ry="10" fill="#3A3358" opacity="0.08"/>
+    <!-- ears -->
+    <path d="M70 70 Q55 10 80 5 Q95 8 90 55 Q88 75 78 85 Z" fill="#FFFFFF" stroke="#3A3358" stroke-width="4"/>
+    <path d="M130 70 Q145 10 120 5 Q105 8 110 55 Q112 75 122 85 Z" fill="#FFFFFF" stroke="#3A3358" stroke-width="4"/>
+    <path d="M75 62 Q68 22 82 16 Q90 20 86 55" fill="#FFB6C1"/>
+    <path d="M125 62 Q132 22 118 16 Q110 20 114 55" fill="#FFB6C1"/>
+    <!-- body -->
+    <ellipse cx="100" cy="150" rx="62" ry="55" fill="#FFFFFF" stroke="#3A3358" stroke-width="4"/>
+    <!-- cheeks -->
+    <ellipse cx="62" cy="145" rx="12" ry="9" fill="#FFC9CE" opacity="0.9"/>
+    <ellipse cx="138" cy="145" rx="12" ry="9" fill="#FFC9CE" opacity="0.9"/>
+    <!-- eyes -->
+    <circle cx="80" cy="118" r="9" fill="#3A3358"/>
+    <circle cx="120" cy="118" r="9" fill="#3A3358"/>
+    <circle cx="83" cy="115" r="2.5" fill="#FFFFFF"/>
+    <circle cx="123" cy="115" r="2.5" fill="#FFFFFF"/>
+    <!-- nose + mouth -->
+    <ellipse cx="100" cy="122" rx="4" ry="3" fill="#FF8FA3"/>
+    ${mouth}
+    <!-- scarf -->
+    <path d="M60 158 Q100 178 140 158 L140 172 Q100 190 60 172 Z" fill="#4FC3E8" stroke="#3A3358" stroke-width="3"/>
+    <!-- book -->
+    <g transform="translate(56 170) rotate(-8)">
+      <rect x="0" y="0" width="34" height="24" rx="3" fill="#FF6B6B" stroke="#3A3358" stroke-width="3"/>
+      <line x1="17" y1="2" x2="17" y2="22" stroke="#3A3358" stroke-width="2"/>
+    </g>
+  </svg>`;
+}
+document.getElementById('mascotHome').innerHTML = kikiSVG('happy');
+document.getElementById('mascotLogin').innerHTML = kikiSVG('happy');
+document.getElementById('mascotLevels').innerHTML = kikiSVG('thinking');
+document.getElementById('mascotResult').innerHTML = kikiSVG('cheer');
+document.getElementById('mascotFinal').innerHTML = kikiSVG('cheer');
+
+/* ===================== GAME DATA ===================== */
+const LEVELS = [
+  {
+    id:1, title:'Kenal Huruf', desc:'Tebak huruf awal dari gambar', type:'huruf',
+    questions:[
+      {emoji:'🐱', word:'kucing', answer:'K', options:['K','M','B','L']},
+      {emoji:'🍎', word:'apel', answer:'A', options:['A','U','E','O']},
+      {emoji:'🐘', word:'gajah', answer:'G', options:['G','D','J','P']},
+      {emoji:'🐟', word:'ikan', answer:'I', options:['I','U','A','E']},
+      {emoji:'🌙', word:'bulan', answer:'B', options:['B','D','P','R']},
+    ]
+  },
+  {
+    id:2, title:'Suku Kata Ajaib', desc:'Gabungkan suku kata jadi kata', type:'sukukata',
+    questions:[
+      {emoji:'🍚', word:'nasi', syllables:['na','si']},
+      {emoji:'🐄', word:'sapi', syllables:['sa','pi']},
+      {emoji:'🚪', word:'pintu', syllables:['pin','tu']},
+      {emoji:'📖', word:'buku', syllables:['bu','ku']},
+      {emoji:'🐰', word:'kelinci', syllables:['ke','lin','ci']},
+    ]
+  },
+  {
+    id:3, title:'Kata & Gambar', desc:'Cocokkan kata dengan gambar', type:'katagambar',
+    questions:[
+      {word:'bola', answer:'⚽', options:['⚽','🍌','🐟','🌸']},
+      {word:'ikan', answer:'🐟', options:['🚗','🐟','🏠','🍎']},
+      {word:'bunga', answer:'🌸', options:['🌸','🐄','📖','⚽'] },
+      {word:'rumah', answer:'🏠', options:['🍚','🏠','🐘','🐱']},
+      {word:'mobil', answer:'🚗', options:['🐟','🌙','🚗','🍎']},
+    ]
+  },
+  {
+    id:4, title:'Susun Kalimat', desc:'Urutkan kata jadi kalimat yang benar', type:'kalimat',
+    questions:[
+      {words:['Ini','rumah','saya']},
+      {words:['Adik','makan','nasi']},
+      {words:['Ibu','memasak','di','dapur']},
+      {words:['Kucing','itu','lucu']},
+      {words:['Saya','suka','membaca']},
+    ]
+  },
+  {
+    id:5, title:'Baca Cerita', desc:'Baca cerita, lalu jawab pertanyaannya', type:'cerita',
+    story:'Kiki adalah kelinci yang suka membaca. Setiap pagi, Kiki pergi ke perpustakaan. Kiki membaca buku cerita bergambar. Kiki sangat senang belajar huruf baru. Teman-teman Kiki juga suka membaca bersama.',
+    questions:[
+      {q:'Siapa nama kelinci dalam cerita?', answer:'Kiki', options:['Kiki','Bimo','Rara','Coco']},
+      {q:'Kemana Kiki pergi setiap pagi?', answer:'Perpustakaan', options:['Pasar','Sekolah','Perpustakaan','Taman']},
+      {q:'Apa yang dibaca Kiki?', answer:'Buku cerita bergambar', options:['Koran','Buku cerita bergambar','Surat','Majalah masak']},
+      {q:'Kapan Kiki pergi ke perpustakaan?', answer:'Setiap pagi', options:['Setiap malam','Setiap pagi','Hari Minggu saja','Sore hari']},
+      {q:'Bagaimana perasaan Kiki saat belajar huruf baru?', answer:'Senang', options:['Sedih','Takut','Senang','Marah']},
+    ]
+  },
+];
+
+/* ===================== STATE ===================== */
+let state = {
+  levelProgress: LEVELS.map(()=>({unlocked:false, stars:0, bestScore:0})),
+  totalScore: 0,
+};
+state.levelProgress[0].unlocked = true;
+
+let current = { levelIndex:0, qIndex:0, score:0, correctCount:0, sylPicked:[] };
+
+/* ===================== PLAYERS, LOGIN & LEADERBOARD ===================== */
+const STORE_KEY = 'kiki_players_v1';
+const MAX_POINTS = LEVELS.reduce((n,l)=>n + l.questions.length*20, 0);
+let memStore = {};          // cadangan bila penyimpanan browser tidak tersedia
+let playerKey = null;
+let lbPrev = 'screen-home';
+
+function freshProgress(){
+  const lp = LEVELS.map(()=>({unlocked:false, stars:0, bestScore:0}));
+  lp[0].unlocked = true;
+  return lp;
+}
+function loadPlayers(){
+  try{ const raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : memStore; }
+  catch(e){ return memStore; }
+}
+function savePlayers(p){
+  memStore = p;
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(p)); }catch(e){}
+}
+function persistPlayer(){
+  if(!playerKey) return;
+  const p = loadPlayers();
+  const rec = p[playerKey];
+  if(!rec) return;
+  rec.levelProgress = state.levelProgress;
+  rec.totalScore = state.totalScore;
+  if(state.totalScore > (rec.highScore||0)){
+    rec.highScore = state.totalScore;
+    rec.reachedAt = Date.now();
+  }
+  savePlayers(p);
+}
+
+function renderKnownPlayers(){
+  const players = Object.values(loadPlayers());
+  const wrap = document.getElementById('knownWrap');
+  const list = document.getElementById('knownList');
+  list.innerHTML = '';
+  wrap.style.display = players.length ? 'block' : 'none';
+  players.sort((a,b)=>a.name.localeCompare(b.name)).forEach(pl=>{
+    const b = document.createElement('button');
+    b.className = 'chip-player';
+    b.textContent = pl.name;
+    b.onclick = ()=>doLogin(pl.name);
+    list.appendChild(b);
+  });
+}
+
+function doLogin(forcedName){
+  const input = document.getElementById('usernameInput');
+  const err = document.getElementById('loginError');
+  const name = (forcedName || input.value).trim().replace(/\s+/g,' ');
+  if(name.length < 2){
+    err.textContent = 'Tulis namamu dulu, minimal 2 huruf ya.';
+    input.focus();
+    return;
+  }
+  err.textContent = '';
+  const key = name.toLowerCase();
+  const players = loadPlayers();
+  if(!players[key]){
+    players[key] = {name, levelProgress:freshProgress(), totalScore:0, highScore:0, reachedAt:Date.now()};
+    savePlayers(players);
+  }
+  const rec = players[key];
+  playerKey = key;
+  const lp = freshProgress();
+  (rec.levelProgress||[]).forEach((x,i)=>{ if(lp[i]) lp[i] = Object.assign(lp[i], x); });
+  state = { levelProgress: lp, totalScore: rec.totalScore||0 };
+  updateTotalScoreLabel();
+
+  document.getElementById('playerNameLabel').textContent = rec.name;
+  document.getElementById('playerBar').classList.add('show');
+  document.getElementById('homeSpeech').textContent = `Halo, ${rec.name}! Yuk main sambil belajar membaca!`;
+  input.value = '';
+  showScreen('screen-home');
+}
+
+function logout(){
+  persistPlayer();
+  playerKey = null;
+  state = { levelProgress: freshProgress(), totalScore:0 };
+  updateTotalScoreLabel();
+  document.getElementById('playerBar').classList.remove('show');
+  renderKnownPlayers();
+  showScreen('screen-login');
+}
+
+function showLeaderboard(){
+  const active = document.querySelector('.screen.active');
+  if(active && active.id !== 'screen-leaderboard') lbPrev = active.id;
+  persistPlayer();
+  renderLeaderboard();
+  showScreen('screen-leaderboard');
+}
+function closeLeaderboard(){ showScreen(lbPrev); }
+
+function lbRow(rank, rec, isMe){
+  const medal = rank===1 ? '🥇' : rank===2 ? '🥈' : rank===3 ? '🥉' : rank;
+  const row = document.createElement('div');
+  row.className = 'lb-row' + (isMe ? ' me' : '') + (rank<=3 ? ' r'+rank : '');
+  const pct = Math.min(100, Math.round((rec.highScore||0) / MAX_POINTS * 100));
+
+  const r = document.createElement('div'); r.className = 'lb-rank'; r.textContent = medal;
+  const main = document.createElement('div'); main.className = 'lb-main';
+  const nm = document.createElement('div'); nm.className = 'lb-name'; nm.textContent = rec.name + (isMe ? ' (kamu)' : '');
+  const bar = document.createElement('div'); bar.className = 'lb-bar';
+  const fill = document.createElement('div'); fill.className = 'lb-fill'; fill.style.width = pct + '%';
+  bar.appendChild(fill); main.appendChild(nm); main.appendChild(bar);
+  const pts = document.createElement('div'); pts.className = 'lb-pts'; pts.textContent = rec.highScore||0;
+  row.appendChild(r); row.appendChild(main); row.appendChild(pts);
+  return row;
+}
+
+function renderLeaderboard(){
+  const box = document.getElementById('lbList');
+  box.innerHTML = '';
+  const ranked = Object.entries(loadPlayers())
+    .map(([key,rec])=>({key, ...rec}))
+    .sort((a,b)=> (b.highScore||0)-(a.highScore||0) || (a.reachedAt||0)-(b.reachedAt||0));
+  if(!ranked.length){
+    const e = document.createElement('div');
+    e.className = 'lb-empty';
+    e.textContent = 'Belum ada pemain. Jadilah yang pertama!';
+    box.appendChild(e);
+    return;
+  }
+  ranked.slice(0,10).forEach((rec,i)=> box.appendChild(lbRow(i+1, rec, rec.key===playerKey)));
+  const myIdx = ranked.findIndex(r=>r.key===playerKey);
+  if(myIdx >= 10){
+    const gap = document.createElement('div'); gap.className = 'lb-gap'; gap.textContent = '···';
+    box.appendChild(gap);
+    box.appendChild(lbRow(myIdx+1, ranked[myIdx], true));
+  }
+}
+
+/* ===================== NAVIGATION ===================== */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goToLevels(){
+  renderLevelGrid();
+  showScreen('screen-levels');
+}
+function updateTotalScoreLabel(){
+  document.getElementById('totalScoreLabel').textContent = state.totalScore;
+}
+
+function renderLevelGrid(){
+  const grid = document.getElementById('levelGrid');
+  grid.innerHTML = '';
+  LEVELS.forEach((lvl, i)=>{
+    const prog = state.levelProgress[i];
+    const card = document.createElement('div');
+    card.className = 'level-card' + (prog.unlocked ? '' : ' locked');
+    const starsStr = prog.unlocked ? '⭐'.repeat(prog.stars) + '☆'.repeat(3-prog.stars) : '🔒';
+    card.innerHTML = `
+      <div class="level-num">${lvl.id}</div>
+      <div class="level-info">
+        <h3>${lvl.title}</h3>
+        <p>${lvl.desc}</p>
+      </div>
+      <div class="stars">${starsStr}</div>
+    `;
+    card.onclick = ()=>{ if(prog.unlocked) startLevel(i); };
+    grid.appendChild(card);
+  });
+}
+
+/* ===================== GAME FLOW ===================== */
+function startLevel(index){
+  current = { levelIndex:index, qIndex:0, score:0, correctCount:0, sylPicked:[] };
+  document.getElementById('levelScoreLabel').textContent = '0';
+  showScreen('screen-game');
+  renderQuestion();
+}
+function retryLevel(){ startLevel(current.levelIndex); }
+
+function renderQuestion(){
+  const lvl = LEVELS[current.levelIndex];
+  document.getElementById('gameLevelLabel').textContent = `LEVEL ${lvl.id} · ${lvl.title}`;
+  const total = lvl.type==='cerita' ? lvl.questions.length : lvl.questions.length;
+  const pct = Math.round((current.qIndex/total)*100);
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  const card = document.getElementById('questionCard');
+  const q = lvl.questions[current.qIndex];
+  let html = '';
+
+  if(lvl.type==='huruf'){
+    html += `<div class="q-label">Soal ${current.qIndex+1} dari ${lvl.questions.length}</div>`;
+    html += `<div class="q-emoji">${q.emoji}</div>`;
+    html += `<div class="q-text">Huruf apa awal kata <span class="accent">"${q.word}"</span>?</div>`;
+    html += `<div class="options-grid">`;
+    q.options.forEach(opt=>{
+      html += `<button class="opt-btn" onclick="answerSimple(this,'${opt}','${q.answer}')">${opt}</button>`;
+    });
+    html += `</div>`;
+  }
+  else if(lvl.type==='sukukata'){
+    current.sylPicked = [];
+    html += `<div class="q-label">Soal ${current.qIndex+1} dari ${lvl.questions.length}</div>`;
+    html += `<div class="q-emoji">${q.emoji}</div>`;
+    html += `<div class="q-text">Susun suku kata jadi kata yang tepat!</div>`;
+    html += `<div class="syllable-row" id="slotRow">`;
+    q.syllables.forEach((_,i)=>{ html += `<div class="syllable-slot" id="slot${i}"></div>`; });
+    html += `</div>`;
+    const shuffled = [...q.syllables].sort(()=>Math.random()-0.5);
+    html += `<div class="syllable-bank" id="sylBank">`;
+    shuffled.forEach((s,i)=>{
+      html += `<button class="syllable-chip" id="chip${i}" onclick="pickSyllable('${s}', ${i})">${s}</button>`;
+    });
+    html += `</div>`;
+    html += `<div class="feedback-banner" id="fb"></div>`;
+  }
+  else if(lvl.type==='katagambar'){
+    html += `<div class="q-label">Soal ${current.qIndex+1} dari ${lvl.questions.length}</div>`;
+    html += `<div class="q-text">Kata: <span class="accent">"${q.word}"</span><br>Pilih gambar yang cocok!</div>`;
+    html += `<div class="options-grid">`;
+    q.options.forEach(opt=>{
+      html += `<button class="opt-btn" style="font-size:34px;" onclick="answerSimple(this,'${opt}','${q.answer}')">${opt}</button>`;
+    });
+    html += `</div>`;
+  }
+  else if(lvl.type==='kalimat'){
+    current.sylPicked = [];
+    html += `<div class="q-label">Soal ${current.qIndex+1} dari ${lvl.questions.length}</div>`;
+    html += `<div class="q-text">Susun kata menjadi kalimat yang benar!</div>`;
+    html += `<div class="syllable-row" id="slotRow">`;
+    q.words.forEach((_,i)=>{ html += `<div class="syllable-slot" id="slot${i}">&nbsp;</div>`; });
+    html += `</div>`;
+    const shuffled = [...q.words].sort(()=>Math.random()-0.5);
+    html += `<div class="syllable-bank" id="sylBank">`;
+    shuffled.forEach((s,i)=>{
+      html += `<button class="syllable-chip" id="chip${i}" onclick="pickSyllable('${s}', ${i})">${s}</button>`;
+    });
+    html += `</div>`;
+    html += `<div class="feedback-banner" id="fb"></div>`;
+  }
+  else if(lvl.type==='cerita'){
+    html += `<div class="q-label">Pertanyaan ${current.qIndex+1} dari ${lvl.questions.length}</div>`;
+    html += `<div class="story-box">📖 ${lvl.story}</div>`;
+    html += `<div class="q-text">${q.q}</div>`;
+    html += `<div class="options-grid single-col">`;
+    q.options.forEach(opt=>{
+      html += `<button class="opt-btn" onclick="answerSimple(this,'${opt}','${q.answer}')">${opt}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  card.innerHTML = html;
+}
+
+function answerSimple(btn, chosen, correct){
+  const buttons = btn.parentElement.querySelectorAll('.opt-btn');
+  buttons.forEach(b=>b.disabled = true);
+  if(chosen === correct){
+    btn.classList.add('correct');
+    registerAnswer(true);
+  } else {
+    btn.classList.add('wrong');
+    buttons.forEach(b=>{ if(b.textContent.trim()===correct) b.classList.add('correct'); });
+    registerAnswer(false);
+  }
+  setTimeout(nextStep, 900);
+}
+
+function pickSyllable(syl, chipIndex){
+  const lvl = LEVELS[current.levelIndex];
+  const q = lvl.questions[current.qIndex];
+  const target = lvl.type==='sukukata' ? q.syllables : q.words;
+  const slotIdx = current.sylPicked.length;
+  if(slotIdx >= target.length) return;
+
+  document.getElementById(`chip${chipIndex}`).disabled = true;
+  const slot = document.getElementById(`slot${slotIdx}`);
+  slot.textContent = syl;
+  current.sylPicked.push(syl);
+
+  if(current.sylPicked.length === target.length){
+    const isCorrect = current.sylPicked.every((s,i)=>s===target[i]);
+    const fb = document.getElementById('fb');
+    if(isCorrect){
+      fb.className = 'feedback-banner show ok';
+      fb.textContent = lvl.type==='sukukata' ? `✅ Benar! "${q.word}"` : '✅ Kalimatmu benar!';
+      registerAnswer(true);
+    } else {
+      fb.className = 'feedback-banner show no';
+      const correctText = lvl.type==='sukukata' ? q.syllables.join('') : q.words.join(' ');
+      fb.textContent = `❌ Belum tepat. Jawaban: "${correctText}"`;
+      registerAnswer(false);
+    }
+    document.querySelectorAll('.syllable-chip').forEach(c=>c.disabled=true);
+    setTimeout(nextStep, 1300);
+  }
+}
+
+function registerAnswer(correct){
+  if(correct){
+    current.score += 20;
+    current.correctCount += 1;
+  }
+  document.getElementById('levelScoreLabel').textContent = current.score;
+}
+
+function nextStep(){
+  const lvl = LEVELS[current.levelIndex];
+  current.qIndex += 1;
+  if(current.qIndex < lvl.questions.length){
+    renderQuestion();
+  } else {
+    finishLevel();
+  }
+}
+
+function finishLevel(){
+  const lvl = LEVELS[current.levelIndex];
+  document.getElementById('progressFill').style.width = '100%';
+  const maxScore = lvl.questions.length * 20;
+  const pct = current.score / maxScore;
+  let stars = pct >= 0.99 ? 3 : pct >= 0.6 ? 2 : pct > 0 ? 1 : 0;
+
+  const prog = state.levelProgress[current.levelIndex];
+  if(current.score > prog.bestScore){
+    state.totalScore += (current.score - prog.bestScore);
+    prog.bestScore = current.score;
+  }
+  if(stars > prog.stars) prog.stars = stars;
+  updateTotalScoreLabel();
+  persistPlayer();
+
+  const isLast = current.levelIndex === LEVELS.length - 1;
+  if(!isLast && stars > 0){
+    state.levelProgress[current.levelIndex+1].unlocked = true;
+  }
+  persistPlayer();
+
+  document.getElementById('resultLevelLabel').textContent = `LEVEL ${lvl.id} SELESAI · ${lvl.title}`;
+  document.getElementById('resultStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3-stars);
+  document.getElementById('resultScoreText').textContent = `${current.score} / ${maxScore} poin`;
+  const msgs = stars===3 ? 'Hebat sekali! Kamu jago membaca!' :
+               stars===2 ? 'Bagus! Sedikit lagi sempurna!' :
+               stars===1 ? 'Lumayan, ayo coba lagi biar lebih jago!' :
+               'Ayo coba lagi, kamu pasti bisa!';
+  document.getElementById('resultMessage').textContent = msgs;
+
+  const nextBtn = document.getElementById('nextLevelBtn');
+  if(isLast){ nextBtn.style.display = 'none'; } else { nextBtn.style.display = 'inline-block'; nextBtn.disabled = stars===0; nextBtn.style.opacity = stars===0 ? .5 : 1; }
+
+  showScreen('screen-result');
+
+  if(isLast && stars>0){
+    setTimeout(showFinal, 1400);
+  }
+}
+
+function goNextLevel(){
+  const next = current.levelIndex + 1;
+  if(next < LEVELS.length && state.levelProgress[next].unlocked){
+    startLevel(next);
+  } else {
+    goToLevels();
+  }
+}
+
+function showFinal(){
+  document.getElementById('finalTotal').textContent = state.totalScore + ' Poin';
+  showScreen('screen-final');
+}
+
+function resetGame(){
+  state = { levelProgress: freshProgress(), totalScore:0 };
+  persistPlayer();   // poin tertinggi di peringkat tetap tersimpan
+  updateTotalScoreLabel();
+  showScreen('screen-home');
+}
+
+updateTotalScoreLabel();
+renderKnownPlayers();
+</script>
+</body>
+</html>
